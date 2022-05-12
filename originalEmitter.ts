@@ -1,21 +1,43 @@
-type Handler = () => void
+type Handler = (...args: unknown[]) => void
 
-const handlers: Record<string, Handler> = {}
-
-const trigger = (type: string) => {
-	handlers[type]()
-}
-
-const on = (type: string, handler: Handler) => {
-	handlers[type] = handler
+// Create an Emitter class
+class Emitter {
+	handlers: Record<string, Handler[]> = {}
+	trigger = (type: string, ...args: unknown[]) => {
+		// run all handlers for the event type
+		this.handlers[type]?.forEach(handler => handler(...args))
+	}
+	on = (type: string, handler: Handler) => {
+		// since we can have multiple handlers for the same type
+		// we need to add the handler to the array
+		this.handlers[type] = [...(this.handlers[type] || []), handler]
+	}
+	off = (type: string, handler: Handler) => {
+		// remove only specific handler from the array
+		this.handlers[type] = this.handlers[type]?.filter(h => h !== handler)
+	}
 }
 
 // Usage
 
-on('foo', () => {
-	console.log('Do foo');
-});
+const weatherEmitter = new Emitter()
+const movieEmitter = new Emitter()
 
-trigger('foo');
+const lightRainHandler = () => console.log('It is raining');
+weatherEmitter.on('rain', lightRainHandler)
 
-// log: Do foo
+const heavyRainHandler = () => console.log('It is raining very hard');
+weatherEmitter.on('rain', heavyRainHandler)
+
+movieEmitter.on('rain', () => console.log('Have you seen Doctor Strange?'));
+
+// test the emitter works with multiple handlers for the same event
+weatherEmitter.trigger('rain')
+
+weatherEmitter.off('rain', lightRainHandler)
+
+// test that the handlers are removed
+weatherEmitter.trigger('rain')
+
+// test that handlers don't clash
+movieEmitter.trigger('rain')
